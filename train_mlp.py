@@ -256,8 +256,11 @@ if __name__ == '__main__':
     widths = [128, 256, 512, 1024, 2048, 4096, 8192] 
     # widths = [128]
 
-    availage_gpus = get_available_gpus(min_free_mem_gb=16, max_utilization=50)
-    availage_gpus = [0, 1, 3, 5, 6, 7]
+    free_memory, max_utilization = 16, 50
+    availage_gpus = get_available_gpus(min_free_mem_gb=free_memory, max_utilization=max_utilization)
+    if len(availage_gpus) == 0:
+        raise RuntimeError(f"No available GPUs found with at least {free_memory}GB free memory and utilization < {max_utilization}%")
+    # availage_gpus = [0, 1, 3, 5, 6, 7]
     devices = [f"cuda:{i}" for i in availage_gpus]
     print(f"Available devices: {len(devices)}, {availage_gpus}")
 
