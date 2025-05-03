@@ -4,7 +4,7 @@ A minimal (really) implementation of muP with SGD following the Tensor Programs 
 
 This implementation does not base on "setting shapes", nor optimizer trickes, like others. There is also no tunable scaling hyperparameters.
 
-Running `run_mlp.sh` allows reproducing the results showed below. 
+Running `run_mlp.sh` allows reproducing the results from below. Training script will auto-run on all GPUs with >16GB memory and <50% utilization. Feel free to change it as per your GPUs.
 
 ![alt text](image.png)
 
