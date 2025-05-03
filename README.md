@@ -6,6 +6,6 @@ This implementation does not base on "setting shapes", nor optimizer trickes, li
 
 Running `run_mlp.sh` allows reproducing the results from below. Training script will auto-run on all GPUs with >16GB memory and <50% utilization. Feel free to change it as per your GPUs.
 
-![alt text](image1.png)
+![alt text](image.png)
 
 Special thanks to dvruette for help deciphering the notation and discussions on debugging. 
