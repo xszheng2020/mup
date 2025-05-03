@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 import torch
 from torch import nn
-from torch.optim import SGD
+from torch.optim import SGD, Adam
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
@@ -95,7 +95,7 @@ def preload_subset(batch_size, subset_percentage):
     preloaded = torch.utils.data.DataLoader(preloaded_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
     return preloaded
 
-class NTK_MLP(nn.Module):
+class SP_MLP(nn.Module):
     """Initialized according to Table1 from TP4 -- the most similar training behavior to the plots"""
     def __init__(self, width=128, num_classes=10):
         super().__init__()
@@ -182,6 +182,26 @@ class muMLPTab9(nn.Module):
         h = self.output_mult * self.fc_3(F.relu(h))
         return h
 
+    def get_parameter_groups(self, learning_rate, optimizer):
+        '''
+        SGD specific muP learning rates (Table 9, TP5)
+        *IMPORTANT* SGD in muP just takes the LR that you pass
+        This is only here for implementation completeness
+        '''
+        if optimizer == SGD:
+            return [
+                {'params': self.fc_1.parameters(), 'lr': learning_rate},
+                {'params': self.fc_2.parameters(), 'lr': learning_rate},
+                {'params': self.fc_3.parameters(), 'lr': learning_rate}
+            ]
+        elif optimizer == Adam:
+            '''Adam specific muP learning rates (Table 9, TP5)'''
+            return [
+                {'params': self.fc_1.parameters(), 'lr': learning_rate/self.width**0.5},
+                {'params': self.fc_2.parameters(), 'lr': learning_rate/self.width**0.5},
+                {'params': self.fc_3.parameters(), 'lr': learning_rate/self.width}
+            ]
+
 def train(model, train_dl, optimizer, num_epochs, device):
     model.train()
     for epoch in range(num_epochs):
@@ -197,13 +217,13 @@ def train(model, train_dl, optimizer, num_epochs, device):
         
     return train_loss / len(train_dl.dataset)
 
-def run_chunk(jobs, device, shared_tensor, preloaded, seeds, model_class, epochs):
+def run_chunk(jobs, device, shared_tensor, preloaded, seeds, model_class, optimizer, epochs):
     torch.cuda.set_device(device)
     for job in jobs:
         job_id, log2lr, width = job
-        run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, model_class, epochs)
+        run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, model_class, optimizer, epochs)
 
-def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, model_class, epochs):
+def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, model_class, optimizer, epochs):
     train_dl = preloaded
     losses = []
     print(f"Running job {job_id} on device {device} with log2lr={log2lr}, width={width}")
@@ -211,9 +231,10 @@ def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloade
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-        # model = MLP(width=width).to(device)
         model = model_class(width=width).to(device)
-        optimizer = SGD(model.parameters(), lr=2**log2lr)
+        # custom parameter groups for muMLP, else just use model.parameters()
+        parameters = model.get_parameter_groups(2**log2lr, optimizer) if hasattr(model, 'get_parameter_groups') else model.parameters()
+        optimizer = optimizer(parameters, lr=2**log2lr)
         loss = train(model, train_dl, optimizer, num_epochs=epochs, device=device)
         
         losses.append(loss)
@@ -226,8 +247,9 @@ if __name__ == '__main__':
     mp.set_start_method('spawn', force=True)
 
     parser = argparse.ArgumentParser(description="Train MLP or muMLP model.")
-    parser.add_argument('--model', type=str, choices=['MLP', 'muMLP', 'demoMLP', 'NTKMLP'], required=True, help="Choose the model type: 'MLP', 'muMLP', 'NTK_MLP' or 'demoMLP'")
+    parser.add_argument('--model', type=str, choices=['MLP', 'muMLP', 'demoMLP', 'SPMLP'], required=True, help="Choose the model type: 'MLP', 'muMLP', 'SPMLP' or 'demoMLP'")
     parser.add_argument('--subset', type=float, default=0.2, help="Percentage of dataset to use for training (default: 0.2)")
+    parser.add_argument("--optimizer", type=str, default="SGD", choices=["SGD", "Adam"], help="Optimizer to use: 'SGD' or 'Adam'")
     args = parser.parse_args()
 
     if args.model == 'MLP':
@@ -236,11 +258,14 @@ if __name__ == '__main__':
         model_class = muMLPTab9
     elif args.model == 'demoMLP':
         model_class = demoMLP
-    elif args.model == 'NTKMLP':
-        model_class = NTK_MLP
+    elif args.model == 'SPMLP':
+        model_class = SP_MLP
     else:
         raise ValueError("Invalid model type. Choose 'MLP' or 'muMLP'.")
     print(f"Using model: {args.model}, subset: {args.subset*100}%")
+
+    optimizer = SGD if args.optimizer == "SGD" else Adam
+    print(f"Using optimizer: {args.optimizer}: {optimizer}")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     batch_size = 64
@@ -260,7 +285,7 @@ if __name__ == '__main__':
     availage_gpus = get_available_gpus(min_free_mem_gb=free_memory, max_utilization=max_utilization)
     if len(availage_gpus) == 0:
         raise RuntimeError(f"No available GPUs found with at least {free_memory}GB free memory and utilization < {max_utilization}%")
-    # availage_gpus = [0, 1, 3, 5, 6, 7]
+    availage_gpus = [0, 1, 5, 6, 7]
     devices = [f"cuda:{i}" for i in availage_gpus]
     print(f"Available devices: {len(devices)}, {availage_gpus}")
 
@@ -275,7 +300,7 @@ if __name__ == '__main__':
         device = devices[enum]
 
         print(f"Starting process {enum} on {device} with {len(job_chunk)} jobs")
-        p = mp.Process(target=run_chunk, args=(job_chunk, device, shared_tensor, preloaded, seeds, model_class, epochs))
+        p = mp.Process(target=run_chunk, args=(job_chunk, device, shared_tensor, preloaded, seeds, model_class, optimizer, epochs))
         processes.append(p)
         p.start()
 
@@ -303,6 +328,6 @@ if __name__ == '__main__':
     plt.xlim(np.floor(results_df.index.min())-0.5, np.ceil(results_df.index.max())+0.5)
     plt.legend()
     plt.grid()
-    plt.savefig(f'results/loss_vs_log2lr_{args.model}_{args.subset}.png')
-    results_df.to_csv(f'results/loss_vs_log2lr_{args.model}_{args.subset}.csv')
+    plt.savefig(f'results/loss_vs_log2lr_{args.model}_{args.subset}_{args.optimizer}.png')
+    results_df.to_csv(f'results/loss_vs_log2lr_{args.model}_{args.subset}_{args.optimizer}.csv')
     plt.show()
