@@ -250,6 +250,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, choices=['MLP', 'muMLP', 'demoMLP', 'SPMLP'], required=True, help="Choose the model type: 'MLP', 'muMLP', 'SPMLP' or 'demoMLP'")
     parser.add_argument('--subset', type=float, default=0.2, help="Percentage of dataset to use for training (default: 0.2)")
     parser.add_argument("--optimizer", type=str, default="SGD", choices=["SGD", "Adam"], help="Optimizer to use: 'SGD' or 'Adam'")
+    parser.add_argument("--lr_range", type=float, nargs=2, default=[-12, -4], help="Range of log2 learning rates to use (default: [-16, -4])")
     args = parser.parse_args()
 
     if args.model == 'MLP':
@@ -274,10 +275,13 @@ if __name__ == '__main__':
     preloaded = preload_subset(batch_size, args.subset)
     print(f"Preloaded dataset with {len(preloaded.dataset)} samples.")
 
+    min_lr, max_lr = args.lr_range
+    print(f"Log2 learning rate range: {min_lr} to {max_lr}")
+
     epochs = 20
     seeds = [2137]
     # seeds = [0, 1, 2, 3, 4]
-    log2lrs = np.linspace(-12, 0, 40)
+    log2lrs = np.linspace(min_lr, max_lr, 40)
     widths = [128, 256, 512, 1024, 2048, 4096, 8192] 
     # widths = [128]
 
