@@ -96,10 +96,13 @@ def preload_subset(batch_size, subset_percentage, degrees):
     subset_size = int(len(train_ds) * subset_percentage)
     indices = np.random.choice(len(train_ds), subset_size, replace=False)
     train_subset = torch.utils.data.Subset(train_ds, indices)
-    xs = torch.stack([train_subset[i][0] for i in range(len(train_subset))])
-    ys = torch.tensor([train_subset[i][1] for i in range(len(train_subset))])
-    preloaded_dataset = torch.utils.data.TensorDataset(xs, ys)
-    preloaded = torch.utils.data.DataLoader(preloaded_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    # xs = torch.stack([train_subset[i][0] for i in range(len(train_subset))])
+    # ys = torch.tensor([train_subset[i][1] for i in range(len(train_subset))])
+    # preloaded_dataset = torch.utils.data.TensorDataset(xs, ys)
+    # preloaded = torch.utils.data.DataLoader(preloaded_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    preloaded = torch.utils.data.DataLoader(train_subset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True, 
+                                            persistent_workers=True,    # keep workers alive across epochs (PyTorch ≥1.7)
+                                            prefetch_factor=2)
     ####
     test_ds = datasets.CIFAR10(root='/tmp', train=False, download=True, transform=test_transform)
 
@@ -319,7 +322,7 @@ if __name__ == '__main__':
     # seeds = [0, 1, 2, 3, 4]
     # log2lrs = np.linspace(min_lr, max_lr, 40)
     # log2lrs = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180]
-    log2lrs = [0, 45, 90, 135, 180]
+    log2lrs = [0, 90, 180]
     widths = [128, 256, 512, 1024, 2048, 4096, 8192] 
     # widths = [128]
 
