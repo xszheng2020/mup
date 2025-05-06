@@ -283,7 +283,7 @@ def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloade
         model = model_class(width=width, num_classes=2).to(device)
 
         # custom parameter groups for muMLP, else just use model.parameters()
-        parameters = model.get_parameter_groups(1e-3, optimizer) if hasattr(model, 'get_parameter_groups') else model.parameters()
+        parameters = model.get_parameter_groups(1e-3, optimizer_) if hasattr(model, 'get_parameter_groups') else model.parameters()
         optimizer = optimizer_(parameters, lr=1e-3)
         _, loss = train(model, train_dl, test_dl, optimizer, num_epochs=epochs, device=device)
         
