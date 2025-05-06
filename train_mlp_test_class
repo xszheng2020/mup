@@ -88,6 +88,8 @@ def preload_subset(batch_size, subset_percentage, degrees):
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
     ####
+    mapping = {3:0, 5:1}
+    ####
     train_ds = datasets.CIFAR10(root='/tmp', train=True, download=True, transform=train_transform)
 
     torch.manual_seed(0)
@@ -95,8 +97,8 @@ def preload_subset(batch_size, subset_percentage, degrees):
     subset_size = int(len(train_ds) * subset_percentage)
     indices = np.random.choice(len(train_ds), subset_size, replace=False)
     train_subset = torch.utils.data.Subset(train_ds, indices)
-    xs = torch.stack([train_subset[i][0] for i in range(len(train_subset)) if train_subset[i][1] in [0, 1]])
-    ys = torch.tensor([train_subset[i][1] for i in range(len(train_subset)) if train_subset[i][1] in [0, 1]])
+    xs = torch.stack([train_subset[i][0] for i in range(len(train_subset)) if train_subset[i][1] in [3, 5]])
+    ys = torch.tensor([mapping[train_subset[i][1]] for i in range(len(train_subset)) if train_subset[i][1] in [3, 5]])
     preloaded_dataset = torch.utils.data.TensorDataset(xs, ys)
 
     custom_weights = {
@@ -118,8 +120,8 @@ def preload_subset(batch_size, subset_percentage, degrees):
     subset_size = int(len(test_ds) * subset_percentage)
     indices = np.random.choice(len(test_ds), subset_size, replace=False)
     test_subset = torch.utils.data.Subset(test_ds, indices)
-    xs = torch.stack([test_subset[i][0] for i in range(len(test_subset)) if test_subset[i][1] in [0, 1]])
-    ys = torch.tensor([test_subset[i][1] for i in range(len(test_subset)) if test_subset[i][1] in [0, 1]])
+    xs = torch.stack([test_subset[i][0] for i in range(len(test_subset)) if test_subset[i][1] in [3, 5]])
+    ys = torch.tensor([mapping[test_subset[i][1]] for i in range(len(test_subset)) if test_subset[i][1] in [3, 5]])
     preloaded_dataset = torch.utils.data.TensorDataset(xs, ys)
     test_preloaded = torch.utils.data.DataLoader(preloaded_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     ####
