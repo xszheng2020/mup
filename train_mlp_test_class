@@ -270,7 +270,7 @@ def run_chunk(jobs, device, shared_tensor, batch_size, subset_percentage, seeds,
 
         run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, test_preloaded, model_class, optimizer, epochs)
 
-def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, test_preloaded, model_class, optimizer, epochs):
+def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloaded, test_preloaded, model_class, optimizer_, epochs):
     train_dl = preloaded
     test_dl = test_preloaded
 
@@ -284,7 +284,7 @@ def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloade
 
         # custom parameter groups for muMLP, else just use model.parameters()
         parameters = model.get_parameter_groups(1e-3, optimizer) if hasattr(model, 'get_parameter_groups') else model.parameters()
-        optimizer = optimizer(parameters, lr=1e-3)
+        optimizer = optimizer_(parameters, lr=1e-3)
         _, loss = train(model, train_dl, test_dl, optimizer, num_epochs=epochs, device=device)
         
         losses.append(loss)
@@ -326,8 +326,8 @@ if __name__ == '__main__':
     print(f"Log2 learning rate range: {min_lr} to {max_lr}")
 
     epochs = 20
-    seeds = [2137]
-    # seeds = [0, 1, 2, 3, 4]
+    # seeds = [2137]
+    seeds = [0, 1, 2, 3, 4]
     # log2lrs = np.linspace(min_lr, max_lr, 40)
     # log2lrs = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180]
     # log2lrs = [0, 90, 180]
