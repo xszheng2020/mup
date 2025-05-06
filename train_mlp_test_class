@@ -88,7 +88,7 @@ def preload_subset(batch_size, subset_percentage, degrees):
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
     ####
-    mapping = {3:0, 5:1}
+    mapping = {0:0, 1:1}
     ####
     train_ds = datasets.CIFAR10(root='/tmp', train=True, download=True, transform=train_transform)
 
@@ -97,8 +97,8 @@ def preload_subset(batch_size, subset_percentage, degrees):
     subset_size = int(len(train_ds) * subset_percentage)
     indices = np.random.choice(len(train_ds), subset_size, replace=False)
     train_subset = torch.utils.data.Subset(train_ds, indices)
-    xs = torch.stack([train_subset[i][0] for i in range(len(train_subset)) if train_subset[i][1] in [3, 5]])
-    ys = torch.tensor([mapping[train_subset[i][1]] for i in range(len(train_subset)) if train_subset[i][1] in [3, 5]])
+    xs = torch.stack([train_subset[i][0] for i in range(len(train_subset)) if train_subset[i][1] in [0, 1]])
+    ys = torch.tensor([mapping[train_subset[i][1]] for i in range(len(train_subset)) if train_subset[i][1] in [0, 1]])
     preloaded_dataset = torch.utils.data.TensorDataset(xs, ys)
 
     custom_weights = {
@@ -120,8 +120,8 @@ def preload_subset(batch_size, subset_percentage, degrees):
     subset_size = int(len(test_ds) * subset_percentage)
     indices = np.random.choice(len(test_ds), subset_size, replace=False)
     test_subset = torch.utils.data.Subset(test_ds, indices)
-    xs = torch.stack([test_subset[i][0] for i in range(len(test_subset)) if test_subset[i][1] in [3, 5]])
-    ys = torch.tensor([mapping[test_subset[i][1]] for i in range(len(test_subset)) if test_subset[i][1] in [3, 5]])
+    xs = torch.stack([test_subset[i][0] for i in range(len(test_subset)) if test_subset[i][1] in [0, 1]])
+    ys = torch.tensor([mapping[test_subset[i][1]] for i in range(len(test_subset)) if test_subset[i][1] in [0, 1]])
     preloaded_dataset = torch.utils.data.TensorDataset(xs, ys)
     test_preloaded = torch.utils.data.DataLoader(preloaded_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     ####
@@ -285,8 +285,8 @@ def run_experiment(log2lr, width, seeds, job_id, device, shared_tensor, preloade
         model = model_class(width=width, num_classes=2).to(device)
 
         # custom parameter groups for muMLP, else just use model.parameters()
-        parameters = model.get_parameter_groups(1e-3, optimizer_) if hasattr(model, 'get_parameter_groups') else model.parameters()
-        optimizer = optimizer_(parameters, lr=1e-3)
+        parameters = model.get_parameter_groups(1e-4, optimizer_) if hasattr(model, 'get_parameter_groups') else model.parameters()
+        optimizer = optimizer_(parameters, lr=1e-4)
         _, loss = train(model, train_dl, test_dl, optimizer, num_epochs=epochs, device=device)
         
         losses.append(loss)
@@ -328,12 +328,12 @@ if __name__ == '__main__':
     print(f"Log2 learning rate range: {min_lr} to {max_lr}")
 
     epochs = 20
-    # seeds = [2137]
-    seeds = [0, 1, 2, 3, 4]
+    seeds = [2137]
+    # seeds = [0, 1, 2, 3, 4]
     # log2lrs = np.linspace(min_lr, max_lr, 40)
     # log2lrs = [0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180]
     # log2lrs = [0, 90, 180]
-    log2lrs = np.arange(0.1, 0.95, 0.05)
+    log2lrs = np.arange(0.1, 0.95, 0.1)
     print(log2lrs)
     widths = [128, 256, 512, 1024, 2048, 4096, 8192] 
     # widths = [128]
